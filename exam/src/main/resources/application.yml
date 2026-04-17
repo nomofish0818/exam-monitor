@@ -1,0 +1,22 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+  datasource:
+    # 資料庫連線 URL，注意修改為你的資料庫名稱 (例如 exam_db)
+    url: jdbc:mysql://localhost:3306/exam_monitor_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true    # 資料庫帳號
+    username: root
+    # 資料庫密碼
+    password: 9990255Xox
+    # 資料庫驅動類
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+# MyBatis-Plus 相關配置
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 在控制台印出 SQL 語句，方便開發調試
+  global-config:
+    db-config:
+      id-type: auto # 設定主鍵自增策略
