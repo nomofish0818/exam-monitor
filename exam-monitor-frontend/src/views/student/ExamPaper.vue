@@ -35,14 +35,22 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElNotification, ElMessageBox } from 'element-plus';
+import { ElNotification, ElMessageBox, ElMessage } from 'element-plus';
 import CameraMonitor from '../../components/CameraMonitor.vue';
 
 const router = useRouter();
 
-// --- 考試數據 ---
+// --- 狀態管理 ---
 const isMonitorActive = ref(true);
 const answers = reactive({});
+let socket = null; // 統一管理 WebSocket 實例
+
+// --- 1. 動態獲取身分資訊 ---
+// 從 localStorage 讀取登入時儲存的 userId
+const userId = localStorage.getItem('userId');
+const role = 'student'; 
+const examId = '101'; // 實際項目中可從 route.params.id 獲取
+
 const mockQuestions = [
   { title: 'Vue3 中，哪一個 API 用於定義響應式對象？', options: ['ref', 'reactive', 'watch', 'computed'] },
   { title: 'SpringBoot 3 最低要求的 Java 版本是多少？', options: ['Java 8', 'Java 11', 'Java 17', 'Java 21'] },
@@ -50,51 +58,63 @@ const mockQuestions = [
   { title: '在 Edge Computing 架構中，主要的運算發生在哪裡？', options: ['雲端伺服器', '用戶終端裝置', '資料庫中心', 'CDN 節點'] }
 ];
 
-// --- WebSocket 邏輯 ---
-let socket = null;
-
+// --- 2. WebSocket 邏輯重構 ---
 const initWebSocket = () => {
-  /**
-   * 連線網址根據先前擴展的後端邏輯：/ws/monitor/{role}/{userId}
-   * 這裡模擬學生 ID 為 202
-   */
-  socket = new WebSocket('ws://localhost:8080/ws/monitor/student/202');
+  // 安全檢查：如果沒登入，強制跳轉
+  if (!userId) {
+    ElMessage.error('偵測不到用戶資訊，請重新登入');
+    router.push('/login');
+    return;
+  }
+
+  // 構造動態 URL：必須與後端 @ServerEndpoint("/ws/monitor/{examId}/{role}/{userId}") 完全一致
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const socketUrl = `${protocol}//localhost:8080/ws/monitor/${examId}/${role}/${userId}`;
+  
+  console.log('🔗 正在建立連線:', socketUrl);
+  socket = new WebSocket(socketUrl);
 
   socket.onopen = () => {
-    console.log('✅ 考場指令系統連線成功');
+    console.log(`✅ 學生[${userId}] 考場指令系統連線成功`);
   };
 
   socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('📩 收到監考指令:', data);
+    try {
+      const data = JSON.parse(event.data);
+      console.log('📩 收到監考指令:', data);
 
-    // 1. 處理警告指令
-    if (data.action === 'WARN') {
-      ElNotification({
-        title: '監考老師提醒',
-        message: data.msg || '請注意考試規範，正對攝像頭！',
-        type: 'error',
-        duration: 5000, // 停留 5 秒
-        position: 'top-left'
-      });
-    }
+      // 處理警告指令 (WARN)
+      if (data.action === 'WARN') {
+        ElNotification({
+          title: '監考老師提醒',
+          message: data.msg || '請注意考試規範，正對攝像頭！',
+          type: 'warning', // 警告建議用 warning 色調
+          duration: 10000, // 警告建議停留久一點
+          position: 'top-left'
+        });
+      }
 
-    // 2. 處理踢出指令
-    if (data.action === 'KICK') {
-      handleKickOut(data.reason);
+      // 處理踢出指令 (KICK)
+      if (data.action === 'KICK') {
+        handleKickOut(data.msg || data.reason);
+      }
+    } catch (e) {
+      console.error('解析 WebSocket 訊息失敗', e);
     }
   };
 
-  socket.onclose = () => {
-    console.warn('⚠️ 考場指令連線已斷開');
+  socket.onclose = (e) => {
+    console.warn('⚠️ 考場指令連線已斷開', e.code, e.reason);
+  };
+
+  socket.onerror = (err) => {
+    console.error('❌ WebSocket 連線出錯', err);
   };
 };
 
 const handleKickOut = (reason) => {
-  // 1. 先銷毀監控組件，確保攝像頭關閉
   isMonitorActive.value = false;
 
-  // 2. 彈出無法關閉的警告視窗
   ElMessageBox.alert(
     `您的考試已被終止。原因：${reason || '違反監考規則'}`,
     '系統通知',
@@ -103,19 +123,23 @@ const handleKickOut = (reason) => {
       type: 'error',
       showClose: false,
       callback: () => {
-        // 3. 強制跳轉至登入頁或首頁
+        // 清除考試狀態，跳轉回首頁
         router.push('/');
       }
     }
   );
 };
 
+// --- 生命週期 ---
 onMounted(() => {
   initWebSocket();
 });
 
 onUnmounted(() => {
-  if (socket) socket.close();
+  if (socket) {
+    socket.close();
+    socket = null;
+  }
 });
 </script>
 

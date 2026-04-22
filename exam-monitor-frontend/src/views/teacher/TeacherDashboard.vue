@@ -86,9 +86,12 @@ let socket = null;
 
 // --- WebSocket 邏輯 ---
 const initWebSocket = () => {
-  // 建立連線 (對應後端 @ServerEndpoint("/ws/exam/{examId}"))
-  socket = new WebSocket('ws://localhost:8080/ws/exam/101');
-
+  const examId = '101';
+  const role = 'teacher';
+  const userId = '1001'; // 實際開發時，這個 ID 應該從登入的 Token 或 localStorage 中取得
+  
+  const wsUrl = `ws://localhost:8080/ws/monitor/${examId}/${role}/${userId}`;
+  socket = new WebSocket(wsUrl);
   socket.onopen = () => {
     wsConnected.value = true;
     console.log('✅ 已成功連線至監控伺服器');

@@ -43,10 +43,12 @@ const router = createRouter({
 
 // 3. 全域前置守衛：動態修改頁面標題 (選配)
 router.beforeEach((to, from, next) => {
-  if (to.meta.title) {
-    document.title = to.meta.title;
+  const token = localStorage.getItem('token');
+  if (to.path.startsWith('/student') && !token) {
+    next('/login');
+  } else {
+    next();
   }
-  next();
-})
+});
 
 export default router
