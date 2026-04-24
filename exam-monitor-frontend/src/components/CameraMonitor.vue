@@ -31,7 +31,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import axios from 'axios';
+import request from '../utils/request';
 
 // --- 配置與狀態 ---
 const lastUploadTime = ref(0); // 記錄上次上傳時間（防抖用）
@@ -53,27 +53,44 @@ const handleAnomaly = async (anomalyType) => {
   isUploading.value = true;
 
   try {
-    // 2. 執行截圖與壓縮
-    const blob = await captureAndCompress();
-    
-    // 3. 封裝 FormData 並上傳
-    const formData = new FormData();
-    formData.append('file', blob, `anomaly_${now}.jpg`);
-    formData.append('type', anomalyType);
-    formData.append('timestamp', now);
-    formData.append('userId', 123); // 實際開發中請從 store 獲取當前用戶 ID
-    formData.append('examId', 456); // 實際開發中從 props 獲取
+  // 1. 執行截圖與壓縮
+  const blob = await captureAndCompress();
+  
+  // 2. 從 localStorage 獲取真實登入的學生 ID (我們在 Login.vue 存進去的)
+  const realUserId = localStorage.getItem('userId');
+  
+  // 3. 獲取考場 ID (目前測試階段先寫死 101，對齊 TeacherDashboard，未來可用 props 傳入)
+  const currentExamId = '101'; 
 
-    const response = await axios.post('/api/monitor/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+  // 🛡️ 安全校驗：如果沒有 userId，說明登入狀態異常，終止上傳
+  if (!realUserId) {
+    console.warn('⚠️ 無法獲取 userId，放棄上傳截圖');
+    return;
+  }
 
-    if (response.data.code === 200) {
-      console.log('異常截圖已上傳至後端');
+  // 4. 封裝 FormData
+  const formData = new FormData();
+  formData.append('file', blob, `anomaly_${Date.now()}.jpg`);
+  formData.append('type', anomalyType);    // 必須與後端的 @RequestParam("type") 一致
+  formData.append('userId', realUserId);   // 必須與後端的 @RequestParam("userId") 一致
+  formData.append('examId', currentExamId);// 必須與後端的 @RequestParam("examId") 一致
+
+  // 5. 發送請求 (確保你上方有 import request from '../utils/request')
+  const response = await request.post('/api/monitor/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
     }
-  } catch (error) {
-    console.error('上傳異常記錄失敗:', error);
-  } finally {
+  });
+
+  if (response.code === 200) {
+    console.log('✅ 異常截圖已成功上傳至後端與資料庫');
+  } else {
+    console.error('⚠️ 上傳失敗，後端回應:', response.message);
+  }
+
+} catch (error) {
+  console.error('❌ 上傳發生網路或伺服器錯誤:', error);
+}finally {
     isUploading.value = false;
   }
 };

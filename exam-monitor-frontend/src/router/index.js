@@ -1,54 +1,49 @@
 import { createRouter, createWebHistory } from 'vue-router'
+// 🚨 必须引入 ElMessage，否则路由守卫报错会导致整站跳转失效
+import { ElMessage } from 'element-plus'
 
-// 1. 定義路由配置
 const routes = [
-  // 根路徑：開發測試導覽頁
-{
-  path: '/',
-  name: 'Home',
-  // 刪除原本的 component: { template: '...' }，改成下面這樣：
-  component: () => import('../views/HomeView.vue')
-},
-  
-  // 學生端：考試頁面
-  {
-    path: '/student/exam',
-    name: 'StudentExam',
-    // 使用動態 import 實現懶加載
-    component: () => import('../views/student/ExamPaper.vue'),
-    meta: { title: '學生考試中' }
-  },
-
-  // 教師端：監控大屏
-  {
-    path: '/teacher/dashboard',
-    name: 'TeacherDashboard',
-    component: () => import('../views/teacher/TeacherDashboard.vue'),
-    meta: { title: '監考管理大屏' }
-  },
-
-  // 404 頁面重定向 (選配：當輸入錯誤網址時回到首頁)
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/'
-  }
+  { path: '/', name: 'Home', component: () => import('../views/HomeView.vue') },
+  { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
+  { path: '/student/exam', name: 'StudentExam', component: () => import('../views/student/ExamPaper.vue') },
+  { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue') },
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
-// 2. 創建路由實例
 const router = createRouter({
-  // 使用 HTML5 History 模式，網址不會有 # 號
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 
-// 3. 全域前置守衛：動態修改頁面標題 (選配)
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
-  if (to.path.startsWith('/student') && !token) {
-    next('/login');
-  } else {
-    next();
+  // 🚨 修复：直接获取字符串，不进行 parseInt 避免 NaN 问题
+  const role = localStorage.getItem('userRole'); 
+
+  // 1. 免登录白名单
+  if (to.path === '/login' || to.path === '/') {
+    return next();
   }
+
+  // 2. 登录检查
+  if (!token) {
+    ElMessage.warning('請先登錄');
+    return next('/login');
+  }
+
+  // 3. 权限分流 (1-教师, 2-学生)
+  // 使用 == 模糊匹配，兼容字符串和数字
+  if (to.path.startsWith('/student') && role != '2') {
+    ElMessage.error('您的帳號無權進入學生考場');
+    return next('/teacher/dashboard'); // 老师强制去教师端
+  }
+
+  if (to.path.startsWith('/teacher') && role != '1') {
+    ElMessage.error('您的帳號無權進入監考大廳');
+    return next('/student/exam'); // 学生强制去学生端
+  }
+
+  next();
 });
 
 export default router
