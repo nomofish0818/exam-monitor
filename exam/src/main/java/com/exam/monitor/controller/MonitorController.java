@@ -19,9 +19,9 @@ public class MonitorController {
     @PostMapping("/upload")
     public ResponseEntity<Map<String, Object>> uploadScreenshot(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("userId") Long studentId,  // 對應前端 append 的 'userId'
-            @RequestParam("examId") Long examId,     // 對應前端 append 的 'examId'
-            @RequestParam("type") String abnormalType // 對應前端 append 的 'type'
+            @RequestParam("userId") Long studentId,  // 对应前端 append 的 'userId'
+            @RequestParam("examId") Long examId,     // 对应前端 append 的 'examId'
+            @RequestParam("type") String abnormalType // 对应前端 append 的 'type'
     ) {
         Map<String, Object> result = new HashMap<>();
 
@@ -30,17 +30,17 @@ public class MonitorController {
 
             if (isSaved) {
                 result.put("code", 200);
-                result.put("message", "異常記錄上傳成功");
-                // 未來這裡可以加入 WebSocket 發送訊息給教師端的邏輯
+                result.put("message", "异常记录上传成功");
+                // 未来这里可以加入 WebSocket 发送讯息给教师端的逻辑
                 return ResponseEntity.ok(result);
             } else {
                 result.put("code", 500);
-                result.put("message", "資料庫寫入失敗");
+                result.put("message", "数据库写入失败");
                 return ResponseEntity.status(500).body(result);
             }
         } catch (Exception e) {
             result.put("code", 500);
-            result.put("message", "伺服器錯誤: " + e.getMessage());
+            result.put("message", "服务器错误: " + e.getMessage());
             return ResponseEntity.status(500).body(result);
         }
     }

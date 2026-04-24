@@ -4,8 +4,8 @@
       <el-card class="paper-card">
         <template #header>
           <div class="paper-header">
-            <h2>2024 年度專業技術模擬考試</h2>
-            <el-tag type="info">剩餘時間：59:22</el-tag>
+            <h2>2024 年度专业技术模拟考试</h2>
+            <el-tag type="info">剩余时间：59:22</el-tag>
           </div>
         </template>
 
@@ -21,7 +21,7 @@
         </div>
 
         <div class="submit-bar">
-          <el-button type="primary" size="large">提交試卷</el-button>
+          <el-button type="primary" size="large">提交试卷</el-button>
         </div>
       </el-card>
     </div>
@@ -40,75 +40,75 @@ import CameraMonitor from '../../components/CameraMonitor.vue';
 
 const router = useRouter();
 
-// --- 狀態管理 ---
+// --- 状态管理 ---
 const isMonitorActive = ref(true);
 const answers = reactive({});
-let socket = null; // 統一管理 WebSocket 實例
+let socket = null; // 统一管理 WebSocket 实例
 
-// --- 1. 動態獲取身分資訊 ---
-// 從 localStorage 讀取登入時儲存的 userId
+// --- 1. 动态获取身分信息 ---
+// 从 localStorage 读取登录时储存的 userId
 const userId = localStorage.getItem('userId');
 const role = 'student'; 
-const examId = '101'; // 實際項目中可從 route.params.id 獲取
+const examId = '101'; // 实际项目中可从 route.params.id 获取
 
 const mockQuestions = [
-  { title: 'Vue3 中，哪一個 API 用於定義響應式對象？', options: ['ref', 'reactive', 'watch', 'computed'] },
+  { title: 'Vue3 中，哪一个 API 用于定义响应式对象？', options: ['ref', 'reactive', 'watch', 'computed'] },
   { title: 'SpringBoot 3 最低要求的 Java 版本是多少？', options: ['Java 8', 'Java 11', 'Java 17', 'Java 21'] },
-  { title: 'WebSocket 通訊中，哪一個協議標識符代表加密連線？', options: ['ws://', 'wss://', 'http://', 'https://'] },
-  { title: '在 Edge Computing 架構中，主要的運算發生在哪裡？', options: ['雲端伺服器', '用戶終端裝置', '資料庫中心', 'CDN 節點'] }
+  { title: 'WebSocket 通讯中，哪一个协议标识符代表加密连接？', options: ['ws://', 'wss://', 'http://', 'https://'] },
+  { title: '在 Edge Computing 架构中，主要的运算发生在哪里？', options: ['云端服务器', '用户终端装置', '数据库中心', 'CDN 节点'] }
 ];
 
-// --- 2. WebSocket 邏輯重構 ---
+// --- 2. WebSocket 逻辑重构 ---
 const initWebSocket = () => {
-  // 安全檢查：如果沒登入，強制跳轉
+  // 安全检查：如果没登录，强制跳转
   if (!userId) {
-    ElMessage.error('偵測不到用戶資訊，請重新登入');
+    ElMessage.error('侦测不到用户信息，请重新登录');
     router.push('/login');
     return;
   }
 
-  // 構造動態 URL：必須與後端 @ServerEndpoint("/ws/monitor/{examId}/{role}/{userId}") 完全一致
+  // 构造动态 URL：必须与后端 @ServerEndpoint("/ws/monitor/{examId}/{role}/{userId}") 完全一致
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const socketUrl = `${protocol}//localhost:8080/ws/monitor/${examId}/${role}/${userId}`;
   
-  console.log('🔗 正在建立連線:', socketUrl);
+  console.log('🔗 正在建立连线:', socketUrl);
   socket = new WebSocket(socketUrl);
 
   socket.onopen = () => {
-    console.log(`✅ 學生[${userId}] 考場指令系統連線成功`);
+    console.log(`✅ 学生[${userId}] 考场指令系统连线成功`);
   };
 
   socket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log('📩 收到監考指令:', data);
+      console.log('📩 收到监考指令:', data);
 
-      // 處理警告指令 (WARN)
+      // 处理警告指令 (WARN)
       if (data.action === 'WARN') {
         ElNotification({
-          title: '監考老師提醒',
-          message: data.msg || '請注意考試規範，正對攝像頭！',
-          type: 'warning', // 警告建議用 warning 色調
-          duration: 10000, // 警告建議停留久一點
+          title: '监考老师提醒',
+          message: data.msg || '请注意考试规范，正对摄像头！',
+          type: 'warning', // 警告建议用 warning 色调
+          duration: 10000, // 警告建议停留久一点
           position: 'top-left'
         });
       }
 
-      // 處理踢出指令 (KICK)
+      // 处理踢出指令 (KICK)
       if (data.action === 'KICK') {
         handleKickOut(data.msg || data.reason);
       }
     } catch (e) {
-      console.error('解析 WebSocket 訊息失敗', e);
+      console.error('解析 WebSocket 讯息失败', e);
     }
   };
 
   socket.onclose = (e) => {
-    console.warn('⚠️ 考場指令連線已斷開', e.code, e.reason);
+    console.warn('⚠️ 考场指令连线已断开', e.code, e.reason);
   };
 
   socket.onerror = (err) => {
-    console.error('❌ WebSocket 連線出錯', err);
+    console.error('❌ WebSocket 连线出错', err);
   };
 };
 
@@ -116,21 +116,21 @@ const handleKickOut = (reason) => {
   isMonitorActive.value = false;
 
   ElMessageBox.alert(
-    `您的考試已被終止。原因：${reason || '違反監考規則'}`,
-    '系統通知',
+    `您的考试已被终止。原因：${reason || '违反监考规则'}`,
+    '系统通知',
     {
-      confirmButtonText: '確定並離開',
+      confirmButtonText: '确定并离开',
       type: 'error',
       showClose: false,
       callback: () => {
-        // 清除考試狀態，跳轉回首頁
+        // 清除考试状态，跳转回首页
         router.push('/');
       }
     }
   );
 };
 
-// --- 生命週期 ---
+// --- 生命周期 ---
 onMounted(() => {
   initWebSocket();
 });
@@ -185,9 +185,9 @@ onUnmounted(() => {
   margin-top: 40px;
 }
 
-/* 監控組件的容器樣式 */
+/* 监控组件的容器样式 */
 .monitor-section {
   width: 350px;
-  /* 這裡可以根據 CameraMonitor 的內部 fixed 定位做調整 */
+  /* 这里可以根据 CameraMonitor 的内部 fixed 定位做调整 */
 }
 </style>

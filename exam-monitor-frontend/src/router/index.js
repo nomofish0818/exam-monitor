@@ -27,19 +27,19 @@ router.beforeEach((to, from, next) => {
 
   // 2. 登录检查
   if (!token) {
-    ElMessage.warning('請先登錄');
+    ElMessage.warning('请先登录');
     return next('/login');
   }
 
   // 3. 权限分流 (1-教师, 2-学生)
   // 使用 == 模糊匹配，兼容字符串和数字
   if (to.path.startsWith('/student') && role != '2') {
-    ElMessage.error('您的帳號無權進入學生考場');
+    ElMessage.error('您的帐号无权进入学生考场');
     return next('/teacher/dashboard'); // 老师强制去教师端
   }
 
   if (to.path.startsWith('/teacher') && role != '1') {
-    ElMessage.error('您的帳號無權進入監考大廳');
+    ElMessage.error('您的帐号无权进入监考大厅');
     return next('/student/exam'); // 学生强制去学生端
   }
 
